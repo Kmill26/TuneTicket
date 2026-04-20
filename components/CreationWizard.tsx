@@ -13,7 +13,6 @@ import {
   type WizardData,
 } from "@/lib/wizard-schema";
 import { GlassPanel } from "./GlassPanel";
-import { LivePromptPreview } from "./LivePromptPreview";
 import { TooltipHint } from "./TooltipHint";
 import { WizardExamplePresets } from "./WizardExamplePresets";
 import { WIZARD_EXAMPLES } from "@/lib/wizard-examples";
@@ -107,7 +106,7 @@ export function CreationWizard() {
   };
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-10 px-6 pb-24 pt-28 lg:grid-cols-[minmax(0,1fr)_380px]">
+    <div className="mx-auto max-w-4xl px-6 pb-24 pt-28">
       <div className="space-y-8">
         <header className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#00F5FF]">Composer</p>
@@ -115,7 +114,7 @@ export function CreationWizard() {
             Shape your song brief
           </h1>
           <p className="max-w-xl text-sm leading-relaxed text-[#A1A1AA]">
-            Every field feeds the Grok and Suno prompts — tuned for your occasion, your person, and your sound.
+            Every field helps us craft a precise, personal request for your custom song.
           </p>
         </header>
 
@@ -211,10 +210,6 @@ export function CreationWizard() {
             </motion.button>
           )}
         </div>
-      </div>
-
-      <div className="lg:pt-8">
-        <LivePromptPreview data={data} step={step} />
       </div>
     </div>
   );
@@ -518,8 +513,7 @@ function StepReview({
       </ul>
 
       <p className="text-xs leading-relaxed text-zinc-500">
-        You will land on your neon ticket next. Tap Generate Ticket to save your order, notify our team, and unlock both
-        prompts in full.
+        Your request will be processed after you tap Generate Ticket.
       </p>
     </div>
   );
