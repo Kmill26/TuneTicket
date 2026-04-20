@@ -11,7 +11,7 @@ const f = createUploadthing();
 export const ourFileRouter = {
   songDeliveryAudio: f(
     {
-      audio: { maxFileSize: "256MB", maxFileCount: 1 },
+      audio: { maxFileSize: "32MB", maxFileCount: 1 },
     },
     { awaitServerData: true },
   )

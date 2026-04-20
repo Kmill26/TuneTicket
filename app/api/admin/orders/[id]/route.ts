@@ -3,7 +3,10 @@ import { randomBytes } from "node:crypto";
 import { FulfillmentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-auth";
-import { sendSongDeliveryEmail } from "@/lib/send-song-delivery-email";
+import {
+  fetchAudioBufferForDelivery,
+  sendSongDeliveryEmail,
+} from "@/lib/send-song-delivery-email";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -81,6 +84,11 @@ export async function PATCH(req: Request, { params }: Params) {
       );
     }
 
+    const audioFetch = await fetchAudioBufferForDelivery(audioUrl);
+    if (!audioFetch.ok) {
+      return NextResponse.json({ error: audioFetch.error }, { status: 413 });
+    }
+
     const downloadToken = randomBytes(32).toString("hex");
 
     const updated = await prisma.ticket.update({
@@ -95,7 +103,10 @@ export async function PATCH(req: Request, { params }: Params) {
       },
     });
 
-    const emailResult = await sendSongDeliveryEmail(id, downloadToken);
+    const emailResult = await sendSongDeliveryEmail(id, downloadToken, {
+      buffer: audioFetch.buffer,
+      filename: fileName,
+    });
 
     return NextResponse.json({
       order: {

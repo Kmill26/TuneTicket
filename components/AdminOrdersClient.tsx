@@ -180,7 +180,7 @@ export function AdminOrdersClient() {
       const emailErr = typeof json.emailError === "string" ? json.emailError : "";
       setDeliverSuccess(
         emailOk
-          ? "Song uploaded and delivery email sent to the customer."
+          ? "Order marked delivered. The song was emailed to the customer with the audio file attached."
           : `Order marked delivered, but email could not be sent${emailErr ? `: ${emailErr}` : "."}`,
       );
       setDeliverFor(null);
@@ -201,8 +201,8 @@ export function AdminOrdersClient() {
         <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#00F5FF]">Internal</p>
         <h1 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">Orders</h1>
         <p className="max-w-xl text-sm text-[#A1A1AA]">
-          Fulfillment: New → In progress → Delivered (upload a .wav or .mp3 to deliver). Customers receive a secure
-          download link by email.
+          Fulfillment: New → In progress → Delivered (upload a .wav or .mp3). The song is attached to the customer
+          email; a secure download link is included as a backup.
         </p>
       </header>
 
@@ -317,7 +317,7 @@ export function AdminOrdersClient() {
                           title={!r.email?.trim() ? "Add customer email on the ticket first" : "Upload song and deliver"}
                           className="text-xs font-semibold uppercase tracking-wider text-[#00F5FF] hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline"
                         >
-                          Mark delivered
+                          Mark as delivered
                         </button>
                       )}
                     </td>
@@ -368,11 +368,12 @@ export function AdminOrdersClient() {
               className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#0c0c0c] p-6 shadow-[0_0_60px_rgba(0,0,0,0.8)]"
             >
               <h2 id="deliver-title" className="text-lg font-semibold text-white">
-                Deliver song
+                Mark as delivered
               </h2>
               <p className="mt-1 text-sm text-[#A1A1AA]">
-                For <span className="text-white">{deliverFor.recipientName}</span> — upload one .wav or .mp3. This is
-                required before we can mark the order delivered and email the customer.
+                For <span className="text-white">{deliverFor.recipientName}</span> — upload the final .wav or .mp3 below.
+                The file is <span className="text-zinc-300">required</span>: we attach it to the customer&apos;s email
+                (max ~25 MB for email delivery; use MP3 if needed).
               </p>
 
               {!deliverFor.email?.trim() && (
@@ -391,7 +392,7 @@ export function AdminOrdersClient() {
                   }}
                   onUploadError={(e) => setDeliverError(e.message)}
                   content={{
-                    allowedContent: "Audio: WAV or MP3 (max 256MB)",
+                    allowedContent: "Audio: WAV or MP3 — attach up to ~25 MB; larger files cannot be emailed",
                   }}
                   appearance={{
                     container:
@@ -430,7 +431,7 @@ export function AdminOrdersClient() {
                   }
                   className="rounded-lg border border-[#00F5FF]/50 bg-[#00F5FF]/10 px-5 py-2 text-sm font-semibold text-[#00F5FF] hover:bg-[#00F5FF]/15 disabled:opacity-40"
                 >
-                  {deliverSubmitting ? "Sending…" : "Send download link & mark delivered"}
+                  {deliverSubmitting ? "Sending…" : "Email song & mark delivered"}
                 </button>
               </div>
             </motion.div>

@@ -1,10 +1,12 @@
 import type { CSSProperties } from "react";
-import { Body, Button, Container, Head, Heading, Html, Link, Preview, Section, Text } from "@react-email/components";
+import { Body, Button, Container, Head, Heading, Html, Preview, Section, Text } from "@react-email/components";
 
 export type SongDeliveryEmailProps = {
   greetingName: string;
   downloadUrl: string;
   fileLabel: string;
+  /** When true, copy assumes the audio file is attached to the email. */
+  attachmentIncluded: boolean;
 };
 
 const bg = "#0a0a0a";
@@ -13,35 +15,55 @@ const border = "rgba(255, 255, 255, 0.1)";
 const cyan = "#00f5ff";
 const muted = "#a1a1aa";
 
-export function SongDeliveryEmail({ greetingName, downloadUrl, fileLabel }: SongDeliveryEmailProps) {
+export function SongDeliveryEmail({ greetingName, downloadUrl, fileLabel, attachmentIncluded }: SongDeliveryEmailProps) {
   const name = greetingName?.trim() || "there";
 
   return (
     <Html>
       <Head />
-      <Preview>Your TuneTicket song is ready to download.</Preview>
+      <Preview>
+        {attachmentIncluded
+          ? "Your custom song is attached — thank you for choosing TuneTicket."
+          : "Your TuneTicket song is ready to download."}
+      </Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={headerBand}>
             <Text style={brand}>TuneTicket</Text>
           </Section>
           <Section style={content}>
-            <Heading style={title}>Your song is ready</Heading>
+            <Heading style={title}>Thank you — your song is ready</Heading>
             <Text style={body}>Hi {name},</Text>
             <Text style={body}>
-              Thank you for choosing TuneTicket. Your custom song has been finished and is ready for you. We hope it
-              captures everything you imagined for this moment.
+              Thank you for choosing TuneTicket. It has been a pleasure to craft this song for you. Your custom track is
+              finished — we hope it brings exactly the moment you envisioned.
             </Text>
-            <Text style={bodyMuted}>
-              File: <span style={{ color: "#e4e4e7" }}>{fileLabel}</span>
-            </Text>
+            {attachmentIncluded ? (
+              <>
+                <Text style={body}>
+                  <strong style={{ color: "#fff" }}>Your song is attached to this email</strong> ({fileLabel}). You
+                  can save it directly from your mail app on any device.
+                </Text>
+                <Text style={bodyMuted}>
+                  If the attachment doesn&apos;t appear or your provider blocks large files, use the secure download
+                  link below — it&apos;s yours to keep.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={bodyMuted}>
+                  File: <span style={{ color: "#e4e4e7" }}>{fileLabel}</span>
+                </Text>
+              </>
+            )}
             <Section style={{ textAlign: "center" as const, marginTop: 28, marginBottom: 8 }}>
               <Button href={downloadUrl} style={btn}>
                 Download your song
               </Button>
             </Section>
             <Text style={finePrint}>
-              This link is private to you. If it stops working, reply to this email and we&apos;ll help you out.
+              This link is private to you. If anything doesn&apos;t work, reply to this email and we&apos;ll help right
+              away.
             </Text>
             <Text style={bodyMuted}>
               With appreciation,
