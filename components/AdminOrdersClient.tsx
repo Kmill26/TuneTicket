@@ -54,6 +54,9 @@ export function AdminOrdersClient() {
   const [deliverError, setDeliverError] = useState<string | null>(null);
   const [deliverSuccess, setDeliverSuccess] = useState<string | null>(null);
 
+  const [testEmailLoadingId, setTestEmailLoadingId] = useState<string | null>(null);
+  const [testEmailBanner, setTestEmailBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
   useEffect(() => {
     const s = typeof window !== "undefined" ? sessionStorage.getItem("tuneticket_admin_secret") : null;
     if (s) {
@@ -116,6 +119,40 @@ export function AdminOrdersClient() {
     setDeliverFor(null);
     setUploadedFile(null);
     setDeliverError(null);
+  };
+
+  const sendTestEmail = async (orderId: string) => {
+    if (!secret.trim()) {
+      setTestEmailBanner({ kind: "err", text: "Enter admin secret first." });
+      return;
+    }
+    setTestEmailLoadingId(orderId);
+    setTestEmailBanner(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/send-test-email`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${secret.trim()}` },
+      });
+      const json = (await res.json()) as { ok?: boolean; message?: string; error?: string };
+      if (!res.ok || !json.ok) {
+        setTestEmailBanner({
+          kind: "err",
+          text: json.error ?? "Failed to send email.",
+        });
+        return;
+      }
+      setTestEmailBanner({
+        kind: "ok",
+        text: json.message ?? "Test email sent successfully.",
+      });
+    } catch (e) {
+      setTestEmailBanner({
+        kind: "err",
+        text: e instanceof Error ? e.message : "Failed to send email.",
+      });
+    } finally {
+      setTestEmailLoadingId(null);
+    }
   };
 
   const finalizeDelivery = async () => {
@@ -200,6 +237,19 @@ export function AdminOrdersClient() {
         </div>
       )}
 
+      {testEmailBanner && (
+        <div
+          className={cn(
+            "mb-6 rounded-xl border px-4 py-3 text-sm",
+            testEmailBanner.kind === "ok"
+              ? "border-emerald-500/35 bg-emerald-500/[0.08] text-emerald-100/90"
+              : "border-red-500/35 bg-red-500/[0.08] text-red-200",
+          )}
+        >
+          {testEmailBanner.text}
+        </div>
+      )}
+
       {error && <p className="mb-6 text-sm text-red-400">{error}</p>}
 
       {rows && rows.length === 0 && <p className="text-sm text-[#A1A1AA]">No orders yet.</p>}
@@ -216,6 +266,7 @@ export function AdminOrdersClient() {
                 <th className="px-4 py-4">Ticket</th>
                 <th className="px-4 py-4">Status</th>
                 <th className="px-4 py-4">Deliver</th>
+                <th className="px-4 py-4">Test email</th>
                 <th className="px-4 py-4">View</th>
               </tr>
             </thead>
@@ -269,6 +320,17 @@ export function AdminOrdersClient() {
                           Mark delivered
                         </button>
                       )}
+                    </td>
+                    <td className="px-4 py-4">
+                      <button
+                        type="button"
+                        onClick={() => void sendTestEmail(r.id)}
+                        disabled={testEmailLoadingId === r.id || !secret.trim()}
+                        title="Sends the full ops notification to the configured inbox (e.g. kedm@mac.com)"
+                        className="whitespace-nowrap text-xs font-semibold uppercase tracking-wider text-zinc-300 hover:text-[#00F5FF] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {testEmailLoadingId === r.id ? "Sending…" : "Send test email"}
+                      </button>
                     </td>
                     <td className="px-4 py-4">
                       <Link

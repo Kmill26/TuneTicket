@@ -1,3 +1,4 @@
+import type { Ticket } from "@prisma/client";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { OrderNotificationEmail } from "@/emails/OrderNotificationEmail";
@@ -16,33 +17,11 @@ function adminInbox(): string {
   return (process.env.ORDER_NOTIFICATION_EMAIL || "kedm@mac.com").trim().toLowerCase();
 }
 
-/**
- * After ticket generation (or legacy payment): notify operations inbox + send customer thank-you (if email on file).
- */
-export async function sendPostPaymentEmails(ticketId: string): Promise<{
-  adminSent: boolean;
-  customerSent: boolean;
-  reasons?: string[];
-}> {
-  const resend = getResend();
-  const reasons: string[] = [];
-
-  if (!resend) {
-    console.warn("[order-emails] RESEND_API_KEY not set; skipping emails.");
-    return { adminSent: false, customerSent: false, reasons: ["no_api_key"] };
-  }
-
-  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
-  if (!ticket) {
-    return { adminSent: false, customerSent: false, reasons: ["ticket_not_found"] };
-  }
-
+async function buildOrderNotificationHtml(ticket: Ticket, paidAtLabel: string) {
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
   const ticketUrl = `${appUrl}/ticket/${ticket.id}?token=${encodeURIComponent(ticket.accessToken)}`;
-  const paidAt = new Date();
-  const paidAtLabel = paidAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
-  const adminHtml = await render(
+  return render(
     OrderNotificationEmail({
       orderId: ticket.id,
       paidAtLabel,
@@ -67,6 +46,73 @@ export async function sendPostPaymentEmails(ticketId: string): Promise<{
       ticketUrl,
     }),
   );
+}
+
+/**
+ * Sends the full ops order notification (same template as post-payment) for debugging. Does not email the customer.
+ */
+export async function sendAdminOrderTestEmail(ticketId: string): Promise<{
+  sent: boolean;
+  to?: string;
+  error?: string;
+}> {
+  const resend = getResend();
+  if (!resend) {
+    return { sent: false, error: "RESEND_API_KEY not configured." };
+  }
+
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+  if (!ticket) {
+    return { sent: false, error: "Ticket not found." };
+  }
+
+  const paidAtLabel = `${new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} (test send)`;
+  const adminHtml = await buildOrderNotificationHtml(ticket, paidAtLabel);
+  const adminTo = adminInbox();
+
+  const { error: adminErr } = await resend.emails.send({
+    from: FROM_ORDERS,
+    to: adminTo,
+    subject: `[TuneTicket] TEST — order ${ticket.id.slice(0, 8)} — ${ticket.recipientName || "Song"}`,
+    html: adminHtml,
+  });
+
+  if (adminErr) {
+    return {
+      sent: false,
+      to: adminTo,
+      error: String((adminErr as { message?: string }).message ?? adminErr),
+    };
+  }
+
+  return { sent: true, to: adminTo };
+}
+
+/**
+ * After ticket generation (or legacy payment): notify operations inbox + send customer thank-you (if email on file).
+ */
+export async function sendPostPaymentEmails(ticketId: string): Promise<{
+  adminSent: boolean;
+  customerSent: boolean;
+  reasons?: string[];
+}> {
+  const resend = getResend();
+  const reasons: string[] = [];
+
+  if (!resend) {
+    console.warn("[order-emails] RESEND_API_KEY not set; skipping emails.");
+    return { adminSent: false, customerSent: false, reasons: ["no_api_key"] };
+  }
+
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+  if (!ticket) {
+    return { adminSent: false, customerSent: false, reasons: ["ticket_not_found"] };
+  }
+
+  const paidAt = new Date();
+  const paidAtLabel = paidAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+
+  const adminHtml = await buildOrderNotificationHtml(ticket, paidAtLabel);
 
   const adminTo = adminInbox();
   const { error: adminErr } = await resend.emails.send({
