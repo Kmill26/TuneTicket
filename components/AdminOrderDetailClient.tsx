@@ -151,6 +151,8 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
   const [deleting, setDeleting] = useState(false);
   const [deliverModalOpen, setDeliverModalOpen] = useState(false);
   const [deliverBanner, setDeliverBanner] = useState<string | null>(null);
+  const [resendBanner, setResendBanner] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
 
   const fetchOrder = useCallback(async (auth: string) => {
     if (!auth.trim()) {
@@ -205,6 +207,31 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
       setError(e instanceof Error ? e.message : "Delete failed");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const resendOrderEmail = async () => {
+    if (!ticket || !secret.trim() || ticket.fulfillmentStatus === "DELIVERED") return;
+    setError(null);
+    setResendBanner(null);
+    setResending(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${ticket.id}/resend-email`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secret.trim()}`,
+        },
+      });
+      const json = (await res.json()) as { ok?: boolean; message?: string; error?: string };
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error ?? "Failed to re-send email.");
+      }
+      setResendBanner(json.message ?? "Email re-sent successfully.");
+      await fetchOrder(secret);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to re-send email.");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -276,6 +303,11 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
             {deliverBanner}
           </div>
         )}
+        {resendBanner && (
+          <div className="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.07] px-4 py-3 text-sm text-emerald-100/95">
+            {resendBanner}
+          </div>
+        )}
 
         {error && (
           <p className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>
@@ -304,11 +336,22 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
                   type="button"
                   onClick={() => {
                     setDeliverBanner(null);
+                    setResendBanner(null);
                     setDeliverModalOpen(true);
                   }}
                   className="rounded-lg border border-[#00F5FF]/45 bg-[#00F5FF]/10 px-4 py-2.5 text-sm font-semibold text-[#00F5FF] shadow-[0_0_24px_rgba(0,245,255,0.12)] transition hover:bg-[#00F5FF]/15"
                 >
                   Mark as delivered
+                </button>
+              )}
+              {!isDelivered && (
+                <button
+                  type="button"
+                  onClick={() => void resendOrderEmail()}
+                  disabled={resending || !secret.trim()}
+                  className="rounded-lg border border-white/15 bg-white/[0.02] px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:border-[#00F5FF]/35 hover:text-[#00F5FF] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {resending ? "Re-sending…" : "Re-send Email"}
                 </button>
               )}
               {ticket.fulfillmentStatus === "DELIVERED" && (

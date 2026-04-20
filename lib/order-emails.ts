@@ -4,6 +4,7 @@ import { render } from "@react-email/render";
 import { OrderNotificationEmail } from "@/emails/OrderNotificationEmail";
 import { CustomerThankYouEmail } from "@/emails/CustomerThankYouEmail";
 import { prisma } from "@/lib/prisma";
+import { buildPromptsFromWizard } from "@/lib/prompts";
 
 const FROM_ORDERS = "TuneTicket Orders <onboarding@resend.dev>";
 
@@ -74,6 +75,76 @@ export async function sendAdminOrderTestEmail(ticketId: string): Promise<{
     from: FROM_ORDERS,
     to: adminTo,
     subject: `[TuneTicket] TEST — order ${ticket.id.slice(0, 8)} — ${ticket.recipientName || "Song"}`,
+    html: adminHtml,
+  });
+
+  if (adminErr) {
+    return {
+      sent: false,
+      to: adminTo,
+      error: String((adminErr as { message?: string }).message ?? adminErr),
+    };
+  }
+
+  return { sent: true, to: adminTo };
+}
+
+/**
+ * Rebuilds Grok/Suno prompts from saved order data and re-sends the full admin notification email.
+ */
+export async function regeneratePromptsAndResendAdminEmail(ticketId: string): Promise<{
+  sent: boolean;
+  to?: string;
+  error?: string;
+}> {
+  const resend = getResend();
+  if (!resend) {
+    return { sent: false, error: "RESEND_API_KEY not configured." };
+  }
+
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+  if (!ticket) {
+    return { sent: false, error: "Ticket not found." };
+  }
+  if (ticket.fulfillmentStatus === "DELIVERED") {
+    return { sent: false, error: "Order is already delivered." };
+  }
+
+  const nextPrompts = buildPromptsFromWizard({
+    customerName: ticket.customerName ?? "",
+    occasion: ticket.occasion ?? "",
+    recipientName: ticket.recipientName ?? "",
+    relationship: ticket.relationship ?? "",
+    personality: ticket.personality ?? "",
+    story: ticket.story ?? "",
+    emotion: ticket.emotion ?? "",
+    specificLines: ticket.specificLines ?? "",
+    genre: ticket.genre ?? "",
+    mood: ticket.mood ?? "",
+    vocals: ticket.vocals ?? "",
+    instruments: ticket.instruments ?? "",
+    tempo: ticket.tempo ?? "",
+    production: ticket.production ?? "",
+    duration: ticket.duration ?? "",
+    email: ticket.email ?? "",
+  });
+
+  const refreshed = await prisma.ticket.update({
+    where: { id: ticketId },
+    data: {
+      grokPrompt: nextPrompts.grokPrompt,
+      sunoPrompt: nextPrompts.sunoPrompt,
+    },
+  });
+
+  const paidAtLabel = `${new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} (re-send)`;
+  const adminHtml = await buildOrderNotificationHtml(refreshed, paidAtLabel);
+  const adminTo = adminInbox();
+
+  const { error: adminErr } = await resend.emails.send({
+    from: FROM_ORDERS,
+    to: adminTo,
+    subject: `[TuneTicket] Re-send — order ${refreshed.id.slice(0, 8)} — ${refreshed.recipientName || "Song"}`,
     html: adminHtml,
   });
 
