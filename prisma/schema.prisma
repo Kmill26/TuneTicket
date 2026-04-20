@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum TicketStatus {
+  AWAITING_PAYMENT
+  PAYMENT_RECEIVED
+  PROMPTS_READY
+  SONG_DELIVERED
+}
+
+enum FulfillmentStatus {
+  PENDING_PAYMENT
+  NEW
+  IN_PROGRESS
+  DELIVERED
+}
+
+model Ticket {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  email         String?
+  customerName  String @default("")
+  accessToken   String @unique @default(cuid())
+
+  occasion      String @default("")
+  recipientName String @default("")
+  relationship  String @default("")
+  personality   String @default("")
+  story         String
+  emotion       String @default("")
+  specificLines String @default("")
+
+  genre       String @default("")
+  mood        String @default("")
+  vocals      String @default("")
+  instruments String @default("")
+  tempo       String @default("")
+  production  String @default("")
+  duration    String @default("")
+
+  grokPrompt String
+  sunoPrompt String
+
+  status TicketStatus @default(AWAITING_PAYMENT)
+
+  fulfillmentStatus FulfillmentStatus @default(PENDING_PAYMENT)
+
+  /// UploadThing (or compatible) URL for the delivered master
+  deliveredAudioUrl     String?
+  deliveredAudioKey     String?
+  deliveredFileName     String?
+  /// Unguessable token for /api/delivery/download — never expose raw storage URLs to customers
+  deliveryDownloadToken String? @unique
+
+  stripeSessionId       String? @unique
+  stripePaymentIntentId String?
+}
