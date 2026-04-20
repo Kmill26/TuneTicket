@@ -21,6 +21,21 @@ const cards = [
   },
 ];
 
+const benefits = [
+  {
+    title: "Done-for-you songwriting intelligence",
+    body: "You share the story. We structure it into professional prompt architecture that captures nuance, memory, and emotional intent.",
+  },
+  {
+    title: "Personal touch, never generic",
+    body: "Every brief is built around a real relationship and real moments so the final song sounds specific, not templated.",
+  },
+  {
+    title: "Fast turnaround with premium clarity",
+    body: "Delivered in 24-48 hours with production-ready Grok + Suno prompts and a clean ticket workflow from start to final export.",
+  },
+];
+
 export function LandingContent() {
   return (
     <div className="relative">
@@ -38,28 +53,28 @@ export function LandingContent() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.05 }}
-          className="mt-6 max-w-4xl text-4xl font-semibold leading-[1.08] tracking-tight text-white md:text-6xl md:leading-[1.05]"
+          className="mt-7 max-w-4xl text-4xl font-semibold leading-[1.06] tracking-tight text-white md:text-6xl"
         >
-          Turn any story into a{" "}
+          Give someone you love a{" "}
           <span className="bg-gradient-to-r from-white via-[#E4E4E7] to-[#00F5FF] bg-clip-text text-transparent">
-            masterpiece song
+            once-in-a-lifetime song
           </span>
-          .
+          {" "}crafted from your story.
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.12 }}
-          className="mt-8 max-w-2xl text-lg leading-relaxed text-[#A1A1AA]"
+          className="mt-7 max-w-3xl text-lg leading-relaxed text-[#A1A1AA] md:text-xl"
         >
-          A calm, intelligent workflow that transforms your story into prompts ready for Grok and Suno — with the
-          restraint of a Tesla cockpit and the clarity of xAI.
+          TuneTicket blends human creative direction with precision AI prompting so your memories become lyrics, style,
+          and emotional tone that actually feel personal.
         </motion.p>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-12 flex flex-wrap gap-6"
+          className="mt-11 flex flex-wrap gap-4"
         >
           <Link
             href="/create"
@@ -74,11 +89,27 @@ export function LandingContent() {
             See the flow
           </Link>
         </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.24 }}
+          className="mt-7 inline-flex w-fit flex-wrap items-center gap-2 rounded-full border border-white/10 bg-black/35 px-4 py-2.5 text-[11px] font-medium text-zinc-300"
+        >
+          <span>Done-for-you</span>
+          <span className="h-1 w-1 rounded-full bg-[#00F5FF]/80" />
+          <span>Delivered in 24-48 hours</span>
+          <span className="h-1 w-1 rounded-full bg-[#00F5FF]/80" />
+          <span>Personalized by a real human</span>
+        </motion.div>
         <LandingExampleStrip />
-        <div className="mt-20 grid gap-4 text-xs text-zinc-600 sm:grid-cols-3">
-          <p>One-tap ticket generation — your brief, delivered cleanly</p>
-          <p>Prompts engineered for modern AI stacks</p>
-          <p>Dark-mode native — no visual noise</p>
+
+        <div className="mt-16 grid gap-5 md:grid-cols-3">
+          {benefits.map((benefit) => (
+            <GlassPanel key={benefit.title} className="h-full border-white/10 bg-zinc-950/55">
+              <p className="text-sm font-semibold text-white">{benefit.title}</p>
+              <p className="mt-2 text-sm leading-relaxed text-[#A1A1AA]">{benefit.body}</p>
+            </GlassPanel>
+          ))}
         </div>
       </section>
 

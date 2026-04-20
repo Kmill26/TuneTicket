@@ -6,7 +6,10 @@ import type { WizardData } from "@/lib/wizard-schema";
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as WizardData;
+    const email = body.email?.trim().toLowerCase() ?? "";
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (
+      !emailValid ||
       !body.story?.trim() ||
       !body.recipientName?.trim() ||
       !body.emotion ||
@@ -15,14 +18,17 @@ export async function POST(req: Request) {
       !body.vocals?.trim() ||
       !body.instruments?.trim()
     ) {
-      return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields (including a valid email)." },
+        { status: 400 },
+      );
     }
 
     const { grokPrompt, sunoPrompt } = buildPromptsFromWizard(body);
 
     const ticket = await prisma.ticket.create({
       data: {
-        email: body.email?.trim() || null,
+        email,
         customerName: body.customerName?.trim() ?? "",
         occasion: body.occasion?.trim() ?? "",
         recipientName: body.recipientName.trim(),

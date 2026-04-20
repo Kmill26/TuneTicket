@@ -60,8 +60,12 @@ export function CreationWizard() {
   }, [searchParams, router]);
 
   const submitTicket = async () => {
+    const email = data.email.trim().toLowerCase();
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (
       !data.customerName.trim() ||
+      !email ||
+      !emailValid ||
       !data.story.trim() ||
       !data.recipientName.trim() ||
       !data.emotion ||
@@ -71,7 +75,7 @@ export function CreationWizard() {
       !data.instruments.trim()
     ) {
       setError(
-        "Complete your name, recipient, story, emotion, genre, mood, vocals, and instruments before creating your ticket.",
+        "Complete your name, valid email, recipient, story, emotion, genre, mood, vocals, and instruments before creating your ticket.",
       );
       return;
     }
@@ -81,7 +85,10 @@ export function CreationWizard() {
       const res = await fetch("/api/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          email,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed");
@@ -478,9 +485,12 @@ function StepReview({
       </label>
 
       <label className="block space-y-2">
-        <span className="text-xs font-medium uppercase tracking-wider text-[#A1A1AA]">Email</span>
+        <span className="text-xs font-medium uppercase tracking-wider text-[#A1A1AA]">
+          Email <span className="text-red-400">*</span>
+        </span>
         <input
           type="email"
+          required
           value={data.email}
           onChange={(e) => setData({ email: e.target.value })}
           placeholder="you@domain.com"
