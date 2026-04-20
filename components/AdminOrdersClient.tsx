@@ -3,10 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { FulfillmentStatus, TicketStatus } from "@prisma/client";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
-import { SongDeliveryDropzone } from "@/lib/uploadthing-components";
-import type { ClientUploadedFileData } from "uploadthing/types";
+import { AdminDeliverSongModal } from "@/components/AdminDeliverSongModal";
 
 type OrderRow = {
   id: string;
@@ -19,13 +18,6 @@ type OrderRow = {
   status: TicketStatus;
   accessToken: string;
 };
-
-type UploadMeta = ClientUploadedFileData<{
-  ufsUrl: string;
-  url: string;
-  key: string;
-  name: string;
-}>;
 
 const fulfillmentLabels: Record<FulfillmentStatus, string> = {
   PENDING_PAYMENT: "Pending",
@@ -45,9 +37,6 @@ export function AdminOrdersClient() {
   const [error, setError] = useState<string | null>(null);
 
   const [deliverFor, setDeliverFor] = useState<OrderRow | null>(null);
-  const [uploadedFile, setUploadedFile] = useState<UploadMeta | null>(null);
-  const [deliverSubmitting, setDeliverSubmitting] = useState(false);
-  const [deliverError, setDeliverError] = useState<string | null>(null);
   const [deliverSuccess, setDeliverSuccess] = useState<string | null>(null);
 
   const [testEmailLoadingId, setTestEmailLoadingId] = useState<string | null>(null);
@@ -107,16 +96,7 @@ export function AdminOrdersClient() {
 
   const openDeliverModal = (row: OrderRow) => {
     setDeliverFor(row);
-    setUploadedFile(null);
-    setDeliverError(null);
     setDeliverSuccess(null);
-  };
-
-  const closeDeliverModal = () => {
-    if (deliverSubmitting) return;
-    setDeliverFor(null);
-    setUploadedFile(null);
-    setDeliverError(null);
   };
 
   const deleteOrder = async (orderId: string, label: string) => {
@@ -174,44 +154,6 @@ export function AdminOrdersClient() {
       });
     } finally {
       setTestEmailLoadingId(null);
-    }
-  };
-
-  const finalizeDelivery = async () => {
-    if (!deliverFor || !uploadedFile || !secret.trim()) return;
-    setDeliverSubmitting(true);
-    setDeliverError(null);
-    try {
-      const res = await fetch(`/api/admin/orders/${deliverFor.id}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${secret.trim()}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fulfillmentStatus: "DELIVERED",
-          audioUrl: uploadedFile.url,
-          audioKey: uploadedFile.key,
-          fileName: uploadedFile.name,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Delivery failed");
-
-      const emailOk = json.emailSent === true;
-      const emailErr = typeof json.emailError === "string" ? json.emailError : "";
-      setDeliverSuccess(
-        emailOk
-          ? "Order marked delivered. The song was emailed to the customer with the audio file attached."
-          : `Order marked delivered, but email could not be sent${emailErr ? `: ${emailErr}` : "."}`,
-      );
-      setDeliverFor(null);
-      setUploadedFile(null);
-      void load();
-    } catch (e) {
-      setDeliverError(e instanceof Error ? e.message : "Delivery failed");
-    } finally {
-      setDeliverSubmitting(false);
     }
   };
 
@@ -381,96 +323,25 @@ export function AdminOrdersClient() {
         </div>
       )}
 
-      <AnimatePresence>
-        {deliverFor && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={closeDeliverModal}
-          >
-            <motion.div
-              role="dialog"
-              aria-modal
-              aria-labelledby="deliver-title"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 12 }}
-              onClick={(e) => e.stopPropagation()}
-              className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#0c0c0c] p-6 shadow-[0_0_60px_rgba(0,0,0,0.8)]"
-            >
-              <h2 id="deliver-title" className="text-lg font-semibold text-white">
-                Mark as delivered
-              </h2>
-              <p className="mt-1 text-sm text-[#A1A1AA]">
-                For <span className="text-white">{deliverFor.recipientName}</span> — upload the final .wav or .mp3 below.
-                The file is <span className="text-zinc-300">required</span>: we attach it to the customer&apos;s email
-                (max ~25 MB for email delivery; use MP3 if needed).
-              </p>
-
-              {!deliverFor.email?.trim() && (
-                <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-                  This ticket has no customer email. Add an email on the ticket before delivering.
-                </p>
-              )}
-
-              <div className="mt-6">
-                <SongDeliveryDropzone
-                  endpoint="songDeliveryAudio"
-                  headers={() => ({ Authorization: `Bearer ${secret.trim()}` })}
-                  onClientUploadComplete={(res) => {
-                    const first = res[0];
-                    if (first) setUploadedFile(first as UploadMeta);
-                  }}
-                  onUploadError={(e) => setDeliverError(e.message)}
-                  content={{
-                    allowedContent: "Audio: WAV or MP3 — attach up to ~25 MB; larger files cannot be emailed",
-                  }}
-                  appearance={{
-                    container:
-                      "border border-dashed border-white/20 rounded-xl bg-black/40 ut-uploading:border-[#00F5FF]/40",
-                    label: "text-sm text-zinc-300",
-                    allowedContent: "text-xs text-zinc-500",
-                    button: "ut-ready:bg-zinc-900 ut-ready:text-[#00F5FF] ut-uploading:cursor-not-allowed",
-                  }}
-                />
-              </div>
-
-              {uploadedFile && (
-                <p className="mt-4 text-sm text-[#A1A1AA]">
-                  Ready: <span className="font-mono text-xs text-white">{uploadedFile.name}</span>
-                </p>
-              )}
-
-              {deliverError && <p className="mt-4 text-sm text-red-400">{deliverError}</p>}
-
-              <div className="mt-6 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={closeDeliverModal}
-                  disabled={deliverSubmitting}
-                  className="rounded-lg border border-white/15 px-4 py-2 text-sm text-[#A1A1AA] hover:text-white disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={finalizeDelivery}
-                  disabled={
-                    deliverSubmitting ||
-                    !uploadedFile ||
-                    !deliverFor.email?.trim()
-                  }
-                  className="rounded-lg border border-[#00F5FF]/50 bg-[#00F5FF]/10 px-5 py-2 text-sm font-semibold text-[#00F5FF] hover:bg-[#00F5FF]/15 disabled:opacity-40"
-                >
-                  {deliverSubmitting ? "Sending…" : "Email song & mark delivered"}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {deliverFor && (
+        <AdminDeliverSongModal
+          open
+          onClose={() => setDeliverFor(null)}
+          recipientName={deliverFor.recipientName}
+          customerEmail={deliverFor.email}
+          orderId={deliverFor.id}
+          secret={secret}
+          onSuccess={(result) => {
+            setDeliverSuccess(
+              result.emailSent
+                ? "Order marked delivered. The song was emailed to the customer with the audio file attached."
+                : `Order marked delivered, but email could not be sent${result.emailError ? `: ${result.emailError}` : "."}`,
+            );
+            setDeliverFor(null);
+            void load();
+          }}
+        />
+      )}
     </div>
   );
 }
