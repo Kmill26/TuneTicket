@@ -37,10 +37,6 @@ const fulfillmentLabels: Record<FulfillmentStatus, string> = {
 /** Statuses admins can set from the dropdown (delivery uses upload modal). */
 const selectableFulfillment: FulfillmentStatus[] = ["PENDING_PAYMENT", "NEW", "IN_PROGRESS"];
 
-function ticketHref(id: string, token: string) {
-  return `/ticket/${id}?token=${encodeURIComponent(token)}`;
-}
-
 export function AdminOrdersClient() {
   const [secret, setSecret] = useState("");
   const [stored, setStored] = useState(false);
@@ -56,6 +52,8 @@ export function AdminOrdersClient() {
 
   const [testEmailLoadingId, setTestEmailLoadingId] = useState<string | null>(null);
   const [testEmailBanner, setTestEmailBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+  const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     const s = typeof window !== "undefined" ? sessionStorage.getItem("tuneticket_admin_secret") : null;
@@ -119,6 +117,30 @@ export function AdminOrdersClient() {
     setDeliverFor(null);
     setUploadedFile(null);
     setDeliverError(null);
+  };
+
+  const deleteOrder = async (orderId: string, label: string) => {
+    if (!secret.trim()) {
+      setError("Enter admin secret.");
+      return;
+    }
+    const ok = typeof window !== "undefined" && window.confirm(`Delete this order permanently?\n\n${label}\n\nThis cannot be undone.`);
+    if (!ok) return;
+    setDeleteLoadingId(orderId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${secret.trim()}` },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Delete failed");
+      void load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleteLoadingId(null);
+    }
   };
 
   const sendTestEmail = async (orderId: string) => {
@@ -268,6 +290,7 @@ export function AdminOrdersClient() {
                 <th className="px-4 py-4">Deliver</th>
                 <th className="px-4 py-4">Test email</th>
                 <th className="px-4 py-4">View</th>
+                <th className="px-4 py-4">Delete</th>
               </tr>
             </thead>
             <tbody>
@@ -334,11 +357,21 @@ export function AdminOrdersClient() {
                     </td>
                     <td className="px-4 py-4">
                       <Link
-                        href={ticketHref(r.id, r.accessToken)}
+                        href={`/admin/orders/${r.id}`}
                         className="text-xs font-semibold uppercase tracking-wider text-[#00F5FF] hover:underline"
                       >
                         View
                       </Link>
+                    </td>
+                    <td className="px-4 py-4">
+                      <button
+                        type="button"
+                        onClick={() => void deleteOrder(r.id, r.recipientName || r.id.slice(0, 8))}
+                        disabled={deleteLoadingId === r.id || !secret.trim()}
+                        className="text-xs font-semibold uppercase tracking-wider text-red-400/90 hover:text-red-300 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {deleteLoadingId === r.id ? "…" : "Delete"}
+                      </button>
                     </td>
                   </tr>
                 );

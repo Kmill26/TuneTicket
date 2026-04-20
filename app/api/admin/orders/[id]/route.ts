@@ -27,6 +27,39 @@ function isAllowedAudioUrl(url: string): boolean {
   }
 }
 
+export async function GET(req: Request, { params }: Params) {
+  const denied = requireAdmin(req);
+  if (denied) return denied;
+
+  const { id } = await params;
+  const ticket = await prisma.ticket.findUnique({ where: { id } });
+  if (!ticket) {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    ticket: {
+      ...ticket,
+      createdAt: ticket.createdAt.toISOString(),
+      updatedAt: ticket.updatedAt.toISOString(),
+    },
+  });
+}
+
+export async function DELETE(req: Request, { params }: Params) {
+  const denied = requireAdmin(req);
+  if (denied) return denied;
+
+  const { id } = await params;
+  const existing = await prisma.ticket.findUnique({ where: { id }, select: { id: true } });
+  if (!existing) {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+
+  await prisma.ticket.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}
+
 export async function PATCH(req: Request, { params }: Params) {
   const denied = requireAdmin(req);
   if (denied) return denied;
